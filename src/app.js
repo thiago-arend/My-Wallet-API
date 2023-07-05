@@ -31,6 +31,12 @@ const usuarioLoginSchema = joi.object({
     senha: joi.string().required()
 });
 
+const transacaoSchema = joi.object({
+    valor: joi.number().positive().required(),
+    descricao: joi.string().required(),
+    tipo: joi.string().valid("entrada", "saida").required()
+});
+
 // endpoints
 app.post("/cadastro", async (req, res) => {
     const { nome, email, senha } = req.body;
@@ -73,6 +79,37 @@ app.post("/", async (req, res) => {
         await db.collection("sessao").insertOne({ token, idUsuario: usuario._id });
 
         res.status(200).send(token);
+
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
+app.post("/nova-transacao/:tipo", async (req, res) => {
+    const { authorization } = req.headers;
+    const { valor, descricao } = req.body;
+    const { tipo } = req.params;
+
+    const validation = transacaoSchema.validate({...req.body, tipo}, { abortEarly: false });
+    if (validation.error) {
+        const errors = validation.error.details.map(det => det.message);
+        return res.status(422).send(errors);
+    }
+
+    // **  validação no front uando um mask de valor
+    // ** desse modo a validação aqui se torna desnecessária
+
+    const token = authorization?.replace("Bearer ", "");
+    if (!token) return res.sendStatus(401);
+
+    try {
+        const sessao = await db.collection("sessao").findOne({ token });
+        if (!sessao) return res.sendStatus(401);
+
+        // idIsuario, valor, descricao, tipo
+        const totalCentavos = Number(valor) * 100;
+        await db.collection("transactions").insertOne({ idUsuario: sessao.idUsuario, valor: totalCentavos, descricao, tipo });
+        res.sendStatus(201);
 
     } catch (err) {
         res.status(500).send(err.message);
