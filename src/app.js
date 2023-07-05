@@ -145,4 +145,20 @@ app.get("/home", async (req, res) => {
 
 });
 
+app.delete("/logout", async (req, res) => {
+    const {authorization} = req.headers;
+
+    const token = authorization?.replace("Bearer ", "");
+    if (!token) return res.sendStatus(401);
+
+    try {
+        const result = await db.collection("session").deleteOne({ token });
+        if (result.deletedCount === 0) return res.sendStatus(404);
+        res.sendStatus(204);
+
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
+
 app.listen(process.env.PORT, () => console.log(`Servidor rodando na porta ${process.env.PORT}`));
