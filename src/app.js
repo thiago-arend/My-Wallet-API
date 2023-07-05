@@ -76,7 +76,7 @@ app.post("/", async (req, res) => {
         if (!bcrypt.compareSync(senha, usuario.senha)) return res.sendStatus(401);
 
         const token = uuid();
-        await db.collection("sessao").insertOne({ token, idUsuario: usuario._id });
+        await db.collection("session").insertOne({ token, idUsuario: usuario._id });
 
         res.status(200).send(token);
 
@@ -90,7 +90,7 @@ app.post("/nova-transacao/:tipo", async (req, res) => {
     const { valor, descricao } = req.body;
     const { tipo } = req.params;
 
-    const validation = transacaoSchema.validate({...req.body, tipo}, { abortEarly: false });
+    const validation = transacaoSchema.validate({ ...req.body, tipo }, { abortEarly: false });
     if (validation.error) {
         const errors = validation.error.details.map(det => det.message);
         return res.status(422).send(errors);
@@ -103,17 +103,46 @@ app.post("/nova-transacao/:tipo", async (req, res) => {
     if (!token) return res.sendStatus(401);
 
     try {
-        const sessao = await db.collection("sessao").findOne({ token });
+        const sessao = await db.collection("session").findOne({ token });
         if (!sessao) return res.sendStatus(401);
 
         // idIsuario, valor, descricao, tipo
         const totalCentavos = Number(valor) * 100;
-        await db.collection("transactions").insertOne({ idUsuario: sessao.idUsuario, valor: totalCentavos, descricao, tipo });
+        const transaction = { 
+            idUsuario: sessao.idUsuario, 
+            valor: totalCentavos, 
+            descricao, 
+            tipo, 
+            timestamp: Date.now() 
+        };
+        await db.collection("transactions").insertOne(transaction);
         res.sendStatus(201);
 
     } catch (err) {
         res.status(500).send(err.message);
     }
+});
+
+app.get("/home", async (req, res) => {
+    const { authorization } = req.headers;
+
+    const token = authorization?.replace("Bearer ", "");
+    if (!token) return res.sendStatus(401);
+
+    try {
+        const sessao = await db.collection("session").findOne({ token });
+        if (!sessao) return res.sendStatus(401);
+
+        const usuario = await db.collection("users").findOne({ _id: sessao.idUsuario });
+        const transactions = await db.collection("transactions")
+            .find({ idUsuario: usuario._id }).sort({ timestamp: -1 }).toArray();
+
+        res.status(200).send({ usuario, transactions });
+
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+
 });
 
 app.listen(process.env.PORT, () => console.log(`Servidor rodando na porta ${process.env.PORT}`));
