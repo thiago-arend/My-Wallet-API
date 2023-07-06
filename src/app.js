@@ -173,14 +173,58 @@ app.delete("/delete/:id", async (req, res) => {
         const sessao = await db.collection("session").findOne({ token });
         if (!sessao) return res.sendStatus(401);
 
-        const result = await db.collection("transactions")
-            .deleteOne({ _id: new ObjectId(id),  idUsuario: sessao.idUsuario});
-        if (result.deletedCount === 0) return res.sendStatus(401); // token existe, mas nao pertence ao usuario
+        const result = await db.collection("transactions").deleteOne({ _id: new ObjectId(id) });
+        if (result.deletedCount === 0) return res.sendStatus(404);
         res.sendStatus(204);
 
     } catch (err) {
         res.status(500).send(err.message);
     }
-})
+});
+
+app.put("/editar-registro/:tipo", async (req, res) => {
+    const { authorization } = req.headers;
+    const { valor, descricao } = req.body;
+    const { tipo } = req.params;
+    const { idRegistro } = req.query;
+
+    if (!idRegistro) return res.sendStatus(422);
+
+    const validation = transacaoSchema.validate({ ...req.body, tipo }, { abortEarly: false });
+    if (validation.error) {
+        const errors = validation.error.details.map(det => det.message);
+        return res.status(422).send(errors);
+    }
+
+    // **  validação no front uando um mask de valor
+    // ** desse modo a validação aqui se torna desnecessária
+
+    const token = authorization?.replace("Bearer ", "");
+    if (!token) return res.sendStatus(401);
+
+    try {
+        const sessao = await db.collection("session").findOne({ token });
+        if (!sessao) return res.sendStatus(401);
+
+        // idIsuario, valor, descricao, tipo
+        const totalCentavos = Number(valor) * 100;
+        const transaction = {
+            idUsuario: sessao.idUsuario,
+            valor: totalCentavos,
+            descricao,
+            tipo,
+            timestamp: Date.now()
+        };
+
+        const updated = await db.collection("transactions")
+            .updateOne({ _id: new ObjectId(idRegistro) }, { $set: transaction });
+        if (updated.matchedCount === 0) return res.sendStatus(404);
+
+        res.sendStatus(204);
+
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+});
 
 app.listen(process.env.PORT, () => console.log(`Servidor rodando na porta ${process.env.PORT}`));
