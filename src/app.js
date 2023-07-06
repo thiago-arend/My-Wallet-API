@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import joi from "joi";
 import bcrypt from "bcrypt"
@@ -108,12 +108,12 @@ app.post("/nova-transacao/:tipo", async (req, res) => {
 
         // idIsuario, valor, descricao, tipo
         const totalCentavos = Number(valor) * 100;
-        const transaction = { 
-            idUsuario: sessao.idUsuario, 
-            valor: totalCentavos, 
-            descricao, 
-            tipo, 
-            timestamp: Date.now() 
+        const transaction = {
+            idUsuario: sessao.idUsuario,
+            valor: totalCentavos,
+            descricao,
+            tipo,
+            timestamp: Date.now()
         };
         await db.collection("transactions").insertOne(transaction);
         res.sendStatus(201);
@@ -145,20 +145,42 @@ app.get("/home", async (req, res) => {
 
 });
 
-app.delete("/logout", async (req, res) => {
-    const {authorization} = req.headers;
+app.delete("/logout/:id", async (req, res) => {
+    const { authorization } = req.headers;
+    const { id } = req.params;
 
     const token = authorization?.replace("Bearer ", "");
     if (!token) return res.sendStatus(401);
 
     try {
-        const result = await db.collection("session").deleteOne({ token });
-        if (result.deletedCount === 0) return res.sendStatus(404);
+        const result = await db.collection("session").deleteOne({ token, idUsuario: new ObjectId(id) });
+        if (result.deletedCount === 0) return res.sendStatus(401); // token existe, mas nao pertence ao usuario
         res.sendStatus(204);
 
     } catch (err) {
         res.status(500).send(err.message);
     }
 });
+
+app.delete("/delete/:id", async (req, res) => {
+    const { authorization } = req.headers;
+    const { id } = req.params;
+
+    const token = authorization?.replace("Bearer ", "");
+    if (!token) return res.sendStatus(401);
+
+    try {
+        const sessao = await db.collection("session").findOne({ token });
+        if (!sessao) return res.sendStatus(401);
+
+        const result = await db.collection("transactions")
+            .deleteOne({ _id: new ObjectId(id),  idUsuario: sessao.idUsuario});
+        if (result.deletedCount === 0) return res.sendStatus(401); // token existe, mas nao pertence ao usuario
+        res.sendStatus(204);
+
+    } catch (err) {
+        res.status(500).send(err.message);
+    }
+})
 
 app.listen(process.env.PORT, () => console.log(`Servidor rodando na porta ${process.env.PORT}`));
