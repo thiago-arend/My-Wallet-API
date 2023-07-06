@@ -40,7 +40,7 @@ export async function signin(req, res) {
         if (!bcrypt.compareSync(senha, usuario.senha)) return res.sendStatus(401);
 
         const token = uuid();
-        await db.collection("session").insertOne({ token, idUsuario: usuario._id });
+        await db.collection("sessions").insertOne({ token, idUsuario: usuario._id });
 
         res.status(200).send(token);
 
@@ -56,7 +56,7 @@ export async function signout(req, res) {
     if (!token) return res.sendStatus(401);
 
     try {
-        const result = await db.collection("session").deleteOne({ token });
+        const result = await db.collection("sessions").deleteOne({ token });
         if (result.deletedCount === 0) return res.sendStatus(401); // token não existe => usuário não autorizado
         res.sendStatus(204);
 

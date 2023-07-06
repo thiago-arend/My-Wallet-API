@@ -20,7 +20,7 @@ export async function createTransaction(req, res) {
     if (!token) return res.sendStatus(401);
 
     try {
-        const sessao = await db.collection("session").findOne({ token });
+        const sessao = await db.collection("sessions").findOne({ token });
         if (!sessao) return res.sendStatus(401);
 
         // idIsuario, valor, descricao, tipo
@@ -47,7 +47,7 @@ export async function readTransactions(req, res) {
     if (!token) return res.sendStatus(401);
 
     try {
-        const sessao = await db.collection("session").findOne({ token });
+        const sessao = await db.collection("sessions").findOne({ token });
         if (!sessao) return res.sendStatus(401);
 
         const usuario = await db.collection("users").findOne({ _id: sessao.idUsuario });
@@ -83,7 +83,7 @@ export async function updateTransaction(req, res) {
     if (!token) return res.sendStatus(401);
 
     try {
-        const sessao = await db.collection("session").findOne({ token });
+        const sessao = await db.collection("sessions").findOne({ token });
         if (!sessao) return res.sendStatus(401);
 
         // idIsuario, valor, descricao, tipo
@@ -115,7 +115,7 @@ export async function deleteTransaction(req, res) {
     if (!token) return res.sendStatus(401);
 
     try {
-        const sessao = await db.collection("session").findOne({ token });
+        const sessao = await db.collection("sessions").findOne({ token });
         if (!sessao) return res.sendStatus(401);
 
         const result = await db.collection("transactions").deleteOne({ _id: new ObjectId(id) });
