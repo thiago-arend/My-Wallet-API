@@ -1,10 +1,10 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient, ObjectId } from "mongodb";
+import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 import joi from "joi";
-import bcrypt from "bcrypt"
-import { v4 as uuid } from "uuid"
+import { signup, signin, signout } from "./controllers/authController.js";
+import { createTransaction, readTransactions, updateTransaction, deleteTransaction  } from "./controllers/transactionController.js";
 
 const app = express();
 app.use(express.json());
@@ -13,218 +13,38 @@ dotenv.config();
 
 // conex]ao ao banco
 const mongoClient = new MongoClient(process.env.DATABASE_URL);
-let db;
+export let db;
 
 mongoClient.connect()
     .then(() => db = mongoClient.db())
     .catch((err) => console.log(err.message));
 
 // schemas
-const usuarioCadastroSchema = joi.object({
+export const usuarioCadastroSchema = joi.object({
     nome: joi.string().required(),
     email: joi.string().email().required(),
     senha: joi.string().min(3).required()
 });
 
-const usuarioLoginSchema = joi.object({
+export const usuarioLoginSchema = joi.object({
     email: joi.string().email().required(),
     senha: joi.string().required()
 });
 
-const transacaoSchema = joi.object({
+export const transacaoSchema = joi.object({
     valor: joi.number().positive().required(),
     descricao: joi.string().required(),
     tipo: joi.string().valid("entrada", "saida").required()
 });
 
 // endpoints
-app.post("/cadastro", async (req, res) => {
-    const { nome, email, senha } = req.body;
+app.post("/cadastro", signup);
+app.post("/", signin);
+app.delete("/logout", signout);
 
-    const validation = usuarioCadastroSchema.validate(req.body, { abortEarly: false });
-    if (validation.error) {
-        const errors = validation.error.details.map(det => det.message);
-        return res.status(422).send(errors);
-    }
-
-    const senhaHash = bcrypt.hashSync(senha, 10);
-
-    try {
-        const usuario = await db.collection("users").findOne({ email });
-        if (usuario) return res.sendStatus(409);
-        await db.collection("users").insertOne({ nome, email, senha: senhaHash });
-
-        res.sendStatus(201);
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-
-});
-
-app.post("/", async (req, res) => {
-    const { email, senha } = req.body;
-
-    const validation = usuarioLoginSchema.validate(req.body, { abortEarly: false });
-    if (validation.error) {
-        const errors = validation.error.details.map(det => det.message);
-        return res.status(422).send(errors);
-    }
-
-    try {
-        const usuario = await db.collection("users").findOne({ email });
-        if (!usuario) return res.sendStatus(404);
-        if (!bcrypt.compareSync(senha, usuario.senha)) return res.sendStatus(401);
-
-        const token = uuid();
-        await db.collection("session").insertOne({ token, idUsuario: usuario._id });
-
-        res.status(200).send(token);
-
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-});
-
-app.post("/nova-transacao/:tipo", async (req, res) => {
-    const { authorization } = req.headers;
-    const { valor, descricao } = req.body;
-    const { tipo } = req.params;
-
-    const validation = transacaoSchema.validate({ ...req.body, tipo }, { abortEarly: false });
-    if (validation.error) {
-        const errors = validation.error.details.map(det => det.message);
-        return res.status(422).send(errors);
-    }
-
-    // **  validação no front uando um mask de valor
-    // ** desse modo a validação aqui se torna desnecessária
-
-    const token = authorization?.replace("Bearer ", "");
-    if (!token) return res.sendStatus(401);
-
-    try {
-        const sessao = await db.collection("session").findOne({ token });
-        if (!sessao) return res.sendStatus(401);
-
-        // idIsuario, valor, descricao, tipo
-        const totalCentavos = Number(valor) * 100;
-        const transaction = {
-            idUsuario: sessao.idUsuario,
-            valor: totalCentavos,
-            descricao,
-            tipo,
-            timestamp: Date.now()
-        };
-        await db.collection("transactions").insertOne(transaction);
-        res.sendStatus(201);
-
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-});
-
-app.get("/home", async (req, res) => {
-    const { authorization } = req.headers;
-
-    const token = authorization?.replace("Bearer ", "");
-    if (!token) return res.sendStatus(401);
-
-    try {
-        const sessao = await db.collection("session").findOne({ token });
-        if (!sessao) return res.sendStatus(401);
-
-        const usuario = await db.collection("users").findOne({ _id: sessao.idUsuario });
-        const transactions = await db.collection("transactions")
-            .find({ idUsuario: usuario._id }).sort({ timestamp: -1 }).toArray();
-
-        res.status(200).send({ usuario, transactions });
-
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-
-});
-
-app.delete("/logout/:id", async (req, res) => {
-    const { authorization } = req.headers;
-    const { id } = req.params;
-
-    const token = authorization?.replace("Bearer ", "");
-    if (!token) return res.sendStatus(401);
-
-    try {
-        const result = await db.collection("session").deleteOne({ token, idUsuario: new ObjectId(id) });
-        if (result.deletedCount === 0) return res.sendStatus(401); // token existe, mas nao pertence ao usuario
-        res.sendStatus(204);
-
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-});
-
-app.delete("/delete/:id", async (req, res) => {
-    const { authorization } = req.headers;
-    const { id } = req.params;
-
-    const token = authorization?.replace("Bearer ", "");
-    if (!token) return res.sendStatus(401);
-
-    try {
-        const sessao = await db.collection("session").findOne({ token });
-        if (!sessao) return res.sendStatus(401);
-
-        const result = await db.collection("transactions").deleteOne({ _id: new ObjectId(id) });
-        if (result.deletedCount === 0) return res.sendStatus(404);
-        res.sendStatus(204);
-
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-});
-
-app.put("/editar-registro/:tipo", async (req, res) => {
-    const { authorization } = req.headers;
-    const { valor, descricao } = req.body;
-    const { tipo } = req.params;
-    const { idRegistro } = req.query;
-
-    if (!idRegistro) return res.sendStatus(422);
-
-    const validation = transacaoSchema.validate({ ...req.body, tipo }, { abortEarly: false });
-    if (validation.error) {
-        const errors = validation.error.details.map(det => det.message);
-        return res.status(422).send(errors);
-    }
-
-    // **  validação no front uando um mask de valor
-    // ** desse modo a validação aqui se torna desnecessária
-
-    const token = authorization?.replace("Bearer ", "");
-    if (!token) return res.sendStatus(401);
-
-    try {
-        const sessao = await db.collection("session").findOne({ token });
-        if (!sessao) return res.sendStatus(401);
-
-        // idIsuario, valor, descricao, tipo
-        const totalCentavos = Number(valor) * 100;
-        const transaction = {
-            idUsuario: sessao.idUsuario,
-            valor: totalCentavos,
-            descricao,
-            tipo,
-            timestamp: Date.now()
-        };
-
-        const updated = await db.collection("transactions")
-            .updateOne({ _id: new ObjectId(idRegistro) }, { $set: transaction });
-        if (updated.matchedCount === 0) return res.sendStatus(404);
-
-        res.sendStatus(204);
-
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-});
+app.post("/nova-transacao/:tipo", createTransaction);
+app.get("/home", readTransactions);
+app.put("/editar-registro/:tipo", updateTransaction);
+app.delete("/delete/:id", deleteTransaction);
 
 app.listen(process.env.PORT, () => console.log(`Servidor rodando na porta ${process.env.PORT}`));
