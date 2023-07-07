@@ -38,10 +38,9 @@ export async function readTransactions(req, res) {
 
 export async function updateTransaction(req, res) {
     const { valor, descricao } = req.body;
-    const { tipo } = req.params;
-    const { idRegistro } = req.query;
+    const { tipo, id } = req.params;
 
-    if (!idRegistro) return res.sendStatus(422); // idRegistro é query obrigatória
+    if (!id) return res.sendStatus(422); // idRegistro é query obrigatória
 
     try {
         // idIsuario, valor, descricao, tipo
@@ -55,7 +54,7 @@ export async function updateTransaction(req, res) {
         };
 
         const updated = await db.collection("transactions")
-            .updateOne({ _id: new ObjectId(idRegistro) }, { $set: transaction });
+            .updateOne({ _id: new ObjectId(id) }, { $set: transaction });
         if (updated.matchedCount === 0) return res.sendStatus(404);
 
         res.sendStatus(204);

@@ -9,7 +9,7 @@ transactionRouter.use(validateAuth);
 
 transactionRouter.post("/nova-transacao/:tipo", validateSchema(transacaoSchema), createTransaction);
 transactionRouter.get("/home", readTransactions);
-transactionRouter.put("/editar-registro/:tipo", validateSchema(transacaoSchema), updateTransaction);
+transactionRouter.put("/editar-registro/:tipo/:id", validateSchema(transacaoSchema), updateTransaction);
 transactionRouter.delete("/delete/:id", deleteTransaction);
 
 export default transactionRouter;
