@@ -3,8 +3,9 @@ import cors from "cors";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
 import joi from "joi";
-import { signup, signin, signout } from "./controllers/authController.js";
-import { createTransaction, readTransactions, updateTransaction, deleteTransaction  } from "./controllers/transactionController.js";
+import { signup, signin, signout } from "./controllers/auth.controller.js";
+import { createTransaction, readTransactions, updateTransaction, deleteTransaction  } from "./controllers/transaction.controller.js";
+import { getUser } from "./controllers/user.controller.js";
 
 const app = express();
 app.use(express.json());
@@ -46,5 +47,7 @@ app.post("/nova-transacao/:tipo", createTransaction);
 app.get("/home", readTransactions);
 app.put("/editar-registro/:tipo", updateTransaction);
 app.delete("/delete/:id", deleteTransaction);
+
+app.get("/user", getUser);
 
 app.listen(process.env.PORT, () => console.log(`Servidor rodando na porta ${process.env.PORT}`));

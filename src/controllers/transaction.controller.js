@@ -50,12 +50,10 @@ export async function readTransactions(req, res) {
         const sessao = await db.collection("sessions").findOne({ token });
         if (!sessao) return res.sendStatus(401);
 
-        const usuario = await db.collection("users").findOne({ _id: sessao.idUsuario });
         const transactions = await db.collection("transactions")
-            .find({ idUsuario: usuario._id }).sort({ timestamp: -1 }).toArray();
-        delete usuario.senha;
+            .find({ idUsuario: sessao.idUsuario }).sort({ timestamp: -1 }).toArray();
 
-        res.status(200).send({ usuario, transactions });
+        res.status(200).send(transactions);
 
     } catch (err) {
         res.status(500).send(err.message);
