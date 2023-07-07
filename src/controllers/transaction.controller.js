@@ -1,5 +1,5 @@
-import { transacaoSchema } from "../app.js";
-import { db } from "../app.js";
+import { transacaoSchema } from "../schemas/transaction.schemas.js";
+import { db } from "../database/database.connection.js";
 import { ObjectId } from "mongodb";
 
 export async function createTransaction(req, res) {
