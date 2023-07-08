@@ -26,6 +26,7 @@ export async function signin(req, res) {
         if (!usuario) return res.sendStatus(404);
         if (!bcrypt.compareSync(senha, usuario.senha)) return res.sendStatus(401);
 
+        await db.collection("sessions").deleteOne({ idUsuario: usuario._id })
         const token = uuid();
         await db.collection("sessions").insertOne({ token, idUsuario: usuario._id });
 
@@ -37,9 +38,10 @@ export async function signin(req, res) {
 }
 
 export async function signout(req, res) {
+    const { token } = res.locals.sessao;
 
     try {
-        const result = await db.collection("sessions").deleteOne({ token: req.sessao.token });
+        const result = await db.collection("sessions").deleteOne({ token });
         if (result.deletedCount === 0) return res.sendStatus(404);
         res.sendStatus(204);
 

@@ -4,12 +4,13 @@ import { ObjectId } from "mongodb";
 export async function createTransaction(req, res) {
     const { valor, descricao } = req.body;
     const { tipo } = req.params;
+    const { idUsuario } = res.locals.sessao;
 
     try {
         // idIsuario, valor, descricao, tipo
         const totalCentavos = Number(valor) * 100;
         const transaction = {
-            idUsuario: req.sessao.idUsuario,
+            idUsuario,
             valor: totalCentavos,
             descricao,
             tipo,
@@ -24,10 +25,11 @@ export async function createTransaction(req, res) {
 }
 
 export async function readTransactions(req, res) {
+    const { idUsuario } = res.locals.sessao;
 
     try {
         const transactions = await db.collection("transactions")
-            .find({ idUsuario: req.sessao.idUsuario }).sort({ timestamp: -1 }).toArray();
+            .find({ idUsuario }).sort({ timestamp: -1 }).toArray();
 
         res.status(200).send(transactions);
 
@@ -39,6 +41,7 @@ export async function readTransactions(req, res) {
 export async function updateTransaction(req, res) {
     const { valor, descricao } = req.body;
     const { tipo, id } = req.params;
+    const { idUsuario } = res.locals.sessao;
 
     if (!id) return res.sendStatus(422); // idRegistro é query obrigatória
 
@@ -46,7 +49,7 @@ export async function updateTransaction(req, res) {
         // idIsuario, valor, descricao, tipo
         const totalCentavos = Number(valor) * 100;
         const transaction = {
-            idUsuario: req.sessao.idUsuario,
+            idUsuario,
             valor: totalCentavos,
             descricao,
             tipo,

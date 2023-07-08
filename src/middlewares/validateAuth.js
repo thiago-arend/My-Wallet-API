@@ -10,7 +10,7 @@ export async function validateAuth(req, res, next) {
         const sessao = await db.collection("sessions").findOne({ token });
         if (!sessao) return res.sendStatus(401);
 
-        req.sessao = sessao; // salva a sessao dentro da requisição para consulta pela prox. função
+        res.locals.sessao = sessao; // salva a sessao dentro da resposta para consulta pela prox. função
 
         next();
     } catch (err) {
