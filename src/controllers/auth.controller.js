@@ -30,7 +30,9 @@ export async function signin(req, res) {
         const token = uuid();
         await db.collection("sessions").insertOne({ token, idUsuario: usuario._id });
 
-        res.status(200).send(token);
+        delete usuario.senha;
+        delete usuario.email;
+        res.status(200).send({ ...usuario, token });
 
     } catch (err) {
         res.status(500).send(err.message);
