@@ -8,7 +8,7 @@ export async function createTransaction(req, res) {
 
     try {
         // idIsuario, valor, descricao, tipo
-        const totalCentavos = Number(valor) * 100;
+        const totalCentavos = Number(valor);
         const transaction = {
             idUsuario,
             valor: totalCentavos,
@@ -47,7 +47,7 @@ export async function updateTransaction(req, res) {
 
     try {
         // idIsuario, valor, descricao, tipo
-        const totalCentavos = Number(valor) * 100;
+        const totalCentavos = Number(valor);
         const transaction = {
             idUsuario,
             valor: totalCentavos,
