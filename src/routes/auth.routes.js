@@ -9,4 +9,6 @@ authRouter.post("/cadastro", validateSchema(usuarioCadastroSchema), signup);
 authRouter.post("/", validateSchema(usuarioLoginSchema), signin);
 authRouter.delete("/logout", validateAuth, signout);
 
+// DATABASE_URL=mongodb://localhost:27017/MyWallet
+
 export default authRouter;
