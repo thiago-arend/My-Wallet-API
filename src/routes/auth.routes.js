@@ -10,5 +10,6 @@ authRouter.post("/", validateSchema(usuarioLoginSchema), signin);
 authRouter.delete("/logout", validateAuth, signout);
 
 // DATABASE_URL=mongodb://localhost:27017/MyWallet
+// mongodb+srv://thiago_arend:tgwENJOUGHlXZF4Q@cluster0.h4wwswa.mongodb.net/MyWallet?retryWrites=true&w=majority
 
 export default authRouter;
